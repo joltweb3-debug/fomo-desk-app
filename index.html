@@ -39,6 +39,16 @@
         <div class="sk-row"><div class="sk sk-card"></div><div class="sk sk-card"></div></div>
       </div>
 
+      <div id="keyUnlock" class="key-unlock" hidden>
+        <div class="key-unlock-card">
+          <p class="key-unlock-lead">This link is missing its key. Paste the original full app link to unlock this phone.</p>
+          <label class="key-unlock-label" for="keyLinkInput">Paste your full app link</label>
+          <input id="keyLinkInput" type="text" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Paste your full app link">
+          <button type="button" class="btn primary" id="keyLinkSave">Save</button>
+          <p id="keyUnlockStatus" class="key-unlock-status" hidden></p>
+        </div>
+      </div>
+
       <div id="homeBody" hidden>
         <section class="balance-block">
           <div class="balance-row">

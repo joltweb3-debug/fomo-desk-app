@@ -59,12 +59,14 @@ body.has-overlay .tabbar {
 
 /* Error */
 .error-banner {
-  position: sticky; top: 0; z-index: 40;
+  position: fixed; left: 0; right: 0; top: 0; z-index: 80;
   background: #3a0a0c; color: #fff;
   padding: 10px var(--gutter);
   padding-top: calc(10px + var(--safe-top));
   font-size: 13px; line-height: 1.35;
 }
+body.has-error-banner .overlay { top: 44px; }
+body.has-error-banner #app { padding-top: 44px; }
 
 /* Navbar */
 .navbar {
@@ -420,3 +422,40 @@ a.btn-fomo { width: 100%; margin-top: 0; }
 
 .pad { padding: 16px var(--gutter); }
 .locked { pointer-events: none; opacity: 0.55; }
+
+/* Paste-link unlock (hash fragment stripped, e.g. in-app browsers) */
+.key-unlock { padding: 12px var(--gutter) 24px; }
+.key-unlock-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 16px 14px 18px;
+}
+.key-unlock-lead {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+.key-unlock-label {
+  display: block;
+  font-size: 13px;
+  color: var(--secondary);
+  margin-bottom: 8px;
+}
+#keyLinkInput {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: var(--card2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+  margin-bottom: 12px;
+}
+#keyLinkSave { width: 100%; }
+.key-unlock-status {
+  margin: 10px 0 0;
+  color: var(--red);
+  font-size: 13px;
+  line-height: 1.35;
+}

@@ -44,13 +44,39 @@
   function readHashParams() {
     return new URLSearchParams((location.hash || "").replace(/^#/, ""));
   }
+  var SECRET_RE = /^[A-Za-z0-9_-]{32,}$/;
+  var SECRET_STORE = "desk_data_secret";
+
   function readDataSecret() {
     var params = readHashParams();
     var d = params.get("d");
-    if (d) { try { localStorage.setItem("desk_data_secret", d); } catch (e) {} }
-    else { try { d = localStorage.getItem("desk_data_secret"); } catch (e) { d = null; } }
-    if (d && /^[A-Za-z0-9_-]{32,}$/.test(d)) return d;
+    if (d) { try { localStorage.setItem(SECRET_STORE, d); } catch (e) {} }
+    else { try { d = localStorage.getItem(SECRET_STORE); } catch (e) { d = null; } }
+    if (d && SECRET_RE.test(d)) return d;
     return null;
+  }
+  function parseKeyFromLink(text) {
+    var s = String(text || "").trim().replace(/^['"]+|['"]+$/g, "").trim();
+    if (!s) return null;
+    var hash = "";
+    try {
+      hash = new URL(s, "https://local.invalid").hash || "";
+    } catch (e) {
+      hash = "";
+    }
+    if (!hash) {
+      var i = s.indexOf("#");
+      if (i >= 0) hash = s.slice(i);
+    }
+    if (hash.charAt(0) === "#") hash = hash.slice(1);
+    if (!hash) return null;
+    var d = null;
+    try { d = new URLSearchParams(hash).get("d"); } catch (e) { d = null; }
+    if (d && SECRET_RE.test(d)) return d;
+    return null;
+  }
+  function forgetStoredKey() {
+    try { localStorage.removeItem(SECRET_STORE); } catch (e) {}
   }
   function readAppToken() {
     var params = readHashParams();
@@ -375,6 +401,7 @@
     var st = store.state;
     if (!st) return;
     document.getElementById("homeSkeleton").hidden = true;
+    hideKeyUnlock();
     document.getElementById("homeBody").hidden = false;
     var handle = (st.health && st.health.fomo_handle) || (store.account && store.account.handle) || "";
     var av = document.getElementById("avatarBtn");
@@ -619,9 +646,15 @@
       "<div class=\"row\"><div class=\"left\"><strong>Telegram</strong></div><span class=\"muted\">" + escapeHtml(tg.note || tgNote) + "</span></div>" +
       "<div class=\"row\"><div class=\"left\"><strong>Send test push</strong><span class=\"muted\">" + escapeHtml(note) + "</span></div><span class=\"muted\">off</span></div></div>";
     html += "<div class=\"group\"><div class=\"row\"><div class=\"left\"><strong>Watch in Grok Bot</strong></div><span class=\"disabled-text\">Open Grok Bot → FOMO Bot</span></div></div>";
+    if (secret) {
+      html += "<div class=\"group\"><div class=\"row\"><div class=\"left\"><strong>Saved key</strong><span class=\"muted\">Stored on this phone only</span></div>" +
+        "<button type=\"button\" class=\"text-btn\" id=\"forgetKeyBtn\">Forget key</button></div></div>";
+    }
     el.innerHTML = html;
     var invite = document.getElementById("inviteBtn");
     if (invite) invite.addEventListener("click", function () { inviteFriend(signup); });
+    var forget = document.getElementById("forgetKeyBtn");
+    if (forget) forget.addEventListener("click", onForgetKey);
   }
 
   function inviteFriend(url) {
@@ -724,8 +757,13 @@
 
   function renderErrorBanner() {
     var el = document.getElementById("errorBanner");
-    if (!store.offline) { el.hidden = true; return; }
+    if (!store.offline) {
+      el.hidden = true;
+      document.body.classList.remove("has-error-banner");
+      return;
+    }
     el.hidden = false;
+    document.body.classList.add("has-error-banner");
     el.dataset.until = String(Date.now() + retryLeft * 1000);
     if (!secret) {
       el.textContent = "This link is missing its key. Re-open the original full link and keep the # part.";
@@ -740,7 +778,7 @@
     retryLeft -= 1;
     if (retryLeft <= 0) {
       retryLeft = 15;
-      pull().catch(function () {});
+      if (secret) pull().catch(function () {});
     }
     var el = document.getElementById("errorBanner");
     if (!el.hidden && store.lastOkAt) {
@@ -816,6 +854,13 @@
     if (store.screenUrl) fs.src = store.screenUrl;
     showOverlay("view-screen");
   });
+  var keySave = document.getElementById("keyLinkSave");
+  var keyInput = document.getElementById("keyLinkInput");
+  if (keySave) keySave.addEventListener("click", function () { savePastedLink(); });
+  if (keyInput) keyInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); savePastedLink(); }
+  });
+
   document.getElementById("searchInput").addEventListener("input", function () {
     var q = (this.value || "").trim().toLowerCase();
     var el = document.getElementById("searchResults");
@@ -864,6 +909,83 @@
     stage.addEventListener("touchend", function () { if (scale < 1.05) { scale = 1; img.style.transform = ""; } });
   })();
 
+  function hideKeyUnlock() {
+    var box = document.getElementById("keyUnlock");
+    if (box) box.hidden = true;
+  }
+  function showKeyUnlock() {
+    var box = document.getElementById("keyUnlock");
+    var skel = document.getElementById("homeSkeleton");
+    var body = document.getElementById("homeBody");
+    if (skel) skel.hidden = true;
+    if (body) body.hidden = true;
+    if (box) box.hidden = false;
+  }
+  function setKeyUnlockStatus(msg) {
+    var st = document.getElementById("keyUnlockStatus");
+    if (!st) return;
+    if (!msg) { st.hidden = true; st.textContent = ""; return; }
+    st.hidden = false;
+    st.textContent = msg;
+  }
+  async function adoptSecret(next) {
+    secret = next;
+    try { localStorage.setItem(SECRET_STORE, next); } catch (e) {}
+    dataBasePromise = derivePath(next).then(function (p) { return "d/" + p; });
+  }
+  async function validateAndAdopt(next) {
+    var path = "d/" + await derivePath(next);
+    var res = await fetch(path + "/state.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("bad-key");
+    var envelope = await res.json();
+    await decryptJson(next, envelope);
+    await adoptSecret(next);
+  }
+  async function savePastedLink() {
+    var input = document.getElementById("keyLinkInput");
+    var btn = document.getElementById("keyLinkSave");
+    var raw = input ? input.value : "";
+    var key = parseKeyFromLink(raw);
+    if (!key) {
+      setKeyUnlockStatus("That paste has no # key. Use the original full link.");
+      return;
+    }
+    if (btn) btn.disabled = true;
+    setKeyUnlockStatus("");
+    try {
+      await validateAndAdopt(key);
+      if (input) input.value = "";
+      hideKeyUnlock();
+      store.offline = false;
+      renderErrorBanner();
+      await pull();
+    } catch (e) {
+      setKeyUnlockStatus("That link did not unlock the desk. Check you pasted the full original link.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+  function onForgetKey() {
+    forgetStoredKey();
+    secret = null;
+    dataBasePromise = Promise.resolve(null);
+    store.state = null;
+    store.lastOkAt = null;
+    store.offline = true;
+    var again = readDataSecret();
+    if (again) {
+      adoptSecret(again).then(function () {
+        store.offline = false;
+        pull();
+      });
+      return;
+    }
+    document.getElementById("homeBody").hidden = true;
+    showKeyUnlock();
+    showTab("home");
+    renderErrorBanner();
+  }
+
   /* ---------- loop ---------- */
   async function pull() {
     try {
@@ -874,7 +996,8 @@
       /* ready is set after applyQuery */
     } catch (err) {
       store.offline = true;
-      if (store.state) renderAll();
+      if (!secret && !store.state) showKeyUnlock();
+      else if (store.state) renderAll();
       else document.getElementById("homeSkeleton").hidden = false;
       renderErrorBanner();
       /* ready is set after applyQuery */
@@ -896,6 +1019,12 @@
   }
 
   pull().then(applyQuery).then(function () { window.__APP_READY__ = true; }).catch(function () { window.__APP_READY__ = true; });
+  window.addEventListener("hashchange", function () {
+    var d = readHashParams().get("d");
+    if (d && SECRET_RE.test(d) && d !== secret) {
+      adoptSecret(d).then(function () { pull(); });
+    }
+  });
   setInterval(pull, PULL_MS);
   setInterval(tickRetry, 1000);
   setInterval(function () { if (store.state) pullScreen(); }, SCREEN_MS);
