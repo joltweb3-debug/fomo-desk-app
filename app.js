@@ -725,9 +725,13 @@
   function renderErrorBanner() {
     var el = document.getElementById("errorBanner");
     if (!store.offline) { el.hidden = true; return; }
-    var last = store.lastOkAt ? store.lastOkAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" }) : "—";
     el.hidden = false;
     el.dataset.until = String(Date.now() + retryLeft * 1000);
+    if (!secret) {
+      el.textContent = "This link is missing its key. Re-open the original full link and keep the # part.";
+      return;
+    }
+    var last = store.lastOkAt ? store.lastOkAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" }) : "—";
     el.textContent = "Desk offline · retrying in " + retryLeft + "s · last update " + last;
   }
   var retryLeft = 15;
