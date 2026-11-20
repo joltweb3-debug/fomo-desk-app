@@ -1,4 +1,4 @@
-const CACHE = "fomo-desk-v3";
+const CACHE = "fomo-desk-v4";
 
 self.addEventListener("install", function (event) {
   event.waitUntil(self.skipWaiting());
