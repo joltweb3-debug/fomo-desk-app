@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FOMO Desk">
+  <title>FOMO Desk</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="errorBanner" class="error-banner" hidden role="status"></div>
+
+  <div id="app">
+    <section id="view-home" class="view active" data-view="home">
+      <header class="navbar">
+        <button type="button" class="avatar" id="avatarBtn" aria-label="Account">J</button>
+        <button type="button" class="nav-title" id="navTitle">Grok Bot <span class="chev">›</span></button>
+        <div class="nav-actions">
+          <button type="button" class="icon-btn" id="searchBtn" aria-label="Search">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+          </button>
+          <button type="button" class="icon-btn" id="bellBtn" aria-label="Notifications">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 16v-5a6 6 0 10-12 0v5l-2 2h16l-2-2z"/><path d="M13.5 20a1.5 1.5 0 01-3 0"/></svg>
+            <span class="bell-dot" id="bellDot" hidden></span>
+          </button>
+        </div>
+      </header>
+
+      <div id="homeSkeleton" class="skeleton-home">
+        <div class="sk sk-balance"></div>
+        <div class="sk sk-chart"></div>
+        <div class="sk sk-screen"></div>
+        <div class="sk-row"><div class="sk sk-card"></div><div class="sk sk-card"></div></div>
+      </div>
+
+      <div id="homeBody" hidden>
+        <section class="balance-block">
+          <div class="balance-row">
+            <div class="odometer" id="balanceOdo">$0.00</div>
+            <span class="badge paper" id="paperBadge">PAPER</span>
+          </div>
+          <div class="balance-meta">
+            <span class="num today" id="todayPct">+0.00%</span>
+            <span class="pill-mult" id="multiplier">1.00×</span>
+          </div>
+        </section>
+
+        <section class="chart-block">
+          <canvas id="chart" width="358" height="200" aria-label="Equity chart"></canvas>
+          <div class="range-switch" id="rangeSwitch" role="tablist">
+            <button type="button" data-range="LIVE" class="on">LIVE</button>
+            <button type="button" data-range="1H">1H</button>
+            <button type="button" data-range="4H">4H</button>
+            <button type="button" data-range="1D">1D</button>
+            <button type="button" data-range="1W">1W</button>
+            <button type="button" data-range="ALL">ALL</button>
+          </div>
+        </section>
+
+        <section class="screen-card" id="screenCard">
+          <div class="screen-frame" id="screenFrame">
+            <img id="screenA" alt="">
+            <img id="screenB" alt="">
+            <div class="screen-idle" id="screenIdle">Idle</div>
+            <div class="screen-tl" id="screenLive"><span class="dot grey"></span> Idle</div>
+            <div class="screen-tr" id="screenLane">Idle</div>
+          </div>
+          <div class="screen-order" id="screenOrder"></div>
+          <p class="empty-msg" id="homeEmpty" hidden>Waiting for the first trade</p>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2 id="botsHeading">Bots</h2>
+          </div>
+          <div class="carousel" id="botCarousel"></div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>Activity</h2>
+            <button type="button" class="see-all" id="seeAllActivity">See all</button>
+          </div>
+          <ol class="activity" id="homeActivity"></ol>
+        </section>
+      </div>
+    </section>
+
+    <section id="view-bots" class="view" data-view="bots" hidden>
+      <header class="navbar tight">
+        <h1>Bots</h1>
+      </header>
+      <div id="botsList" class="bots-list"></div>
+    </section>
+
+    <section id="view-activity" class="view" data-view="activity" hidden>
+      <header class="navbar tight">
+        <h1>Activity</h1>
+      </header>
+      <ol class="activity full" id="activityList"></ol>
+    </section>
+
+    <section id="view-account" class="view" data-view="account" hidden>
+      <header class="navbar tight">
+        <h1>Account</h1>
+      </header>
+      <div id="accountBody" class="account-body"></div>
+    </section>
+
+    <section id="view-coin" class="overlay" hidden>
+      <header class="navbar tight">
+        <button type="button" class="back" id="coinBack" aria-label="Back">‹</button>
+        <div class="coin-head-titles">
+          <h1 id="coinName">Coin</h1>
+          <span class="badge paper" id="coinPaper">PAPER</span>
+        </div>
+        <span class="shield" id="coinShield"></span>
+      </header>
+      <div id="coinBody" class="coin-body"></div>
+    </section>
+
+    <section id="view-audit" class="overlay" hidden>
+      <header class="navbar tight">
+        <button type="button" class="back" id="auditBack" aria-label="Back">‹</button>
+        <h1 id="auditTitle">Audit</h1>
+      </header>
+      <div id="auditBody" class="audit-body"></div>
+    </section>
+
+    <section id="view-search" class="overlay" hidden>
+      <header class="navbar tight">
+        <button type="button" class="back" id="searchBack" aria-label="Back">‹</button>
+        <input id="searchInput" type="search" placeholder="Name, symbol or mint" enterkeyhint="search" autocomplete="off">
+      </header>
+      <ol class="search-results" id="searchResults"></ol>
+    </section>
+
+    <section id="view-bell" class="overlay" hidden>
+      <header class="navbar tight">
+        <button type="button" class="back" id="bellBack" aria-label="Back">‹</button>
+        <h1>Notifications</h1>
+      </header>
+      <div class="pad">
+        <p class="row-note">Plan B: Telegram only</p>
+        <p class="muted" id="bellTelegram">not connected — send /start to @ChainGangCabalBot</p>
+      </div>
+    </section>
+
+    <section id="view-screen" class="overlay fullscreen" hidden>
+      <header class="navbar tight film">
+        <button type="button" class="back" id="screenBack" aria-label="Back">‹</button>
+        <h1>Live screen</h1>
+        <a id="screenFomo" class="btn-fomo" hidden>Open on FOMO</a>
+      </header>
+      <div class="fs-stage" id="fsStage">
+        <img id="fsImg" alt="Live desk screen">
+      </div>
+    </section>
+
+    <div id="sellSheet" class="sheet" hidden>
+      <div class="sheet-card">
+        <h2>Sell now</h2>
+        <div class="sell-pcts">
+          <button type="button" disabled>25%</button>
+          <button type="button" disabled>50%</button>
+          <button type="button" disabled>100%</button>
+        </div>
+        <button type="button" class="confirm" disabled>Confirm sell</button>
+        <p class="writes-note">changes: ask in Grok Bot chat</p>
+        <button type="button" class="sheet-close" id="sellClose">Close</button>
+      </div>
+    </div>
+
+    <nav class="tabbar" id="tabbar">
+      <button type="button" class="tab on" data-tab="home">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l8 7h-3v8h-4v-5H11v5H7v-8H4l8-7z"/></svg>
+        <span>Home</span>
+      </button>
+      <button type="button" class="tab" data-tab="bots">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="8" r="2.2"/><circle cx="17" cy="8" r="2.2"/><circle cx="12" cy="16" r="2.2"/></svg>
+        <span>Bots</span>
+      </button>
+      <button type="button" class="tab" data-tab="activity">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M5 6h14v2H5V6zm0 5h14v2H5v-2zm0 5h10v2H5v-2z"/></svg>
+        <span>Activity</span>
+      </button>
+      <button type="button" class="tab" data-tab="account">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/></svg>
+        <span>Account</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
