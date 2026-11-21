@@ -123,6 +123,14 @@ body.has-error-banner #app { padding-top: 44px; }
 .badge.paper { background: var(--orange); color: #000; }
 .badge.live { display: none; }
 .balance-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.balance-sol { margin-top: 4px; font-size: 13px; color: var(--muted, #8e8e93); letter-spacing: 0.02em; }
+.live-pnl { margin-top: 6px; font-size: 13px; }
+.live-pnl .down { color: #ff453a; }
+.open-pos { list-style: none; padding: 8px 0 0; margin: 0; }
+.open-pos li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+.open-pos .sym { font-weight: 600; }
+.open-pos .down { color: #ff453a; }
+
 .today { font-size: 17px; color: var(--green); font-weight: 590; }
 .today.down { color: var(--red); }
 .pill-mult {

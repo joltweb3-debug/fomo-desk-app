@@ -116,6 +116,13 @@
   function writesNote() {
     return (store.state && store.state.writes) || (store.account && store.account.writes) || WRITES;
   }
+  function fmtSol(n) {
+    var v = Number(n);
+    if (!isFinite(v)) return "—";
+    var s = v.toFixed(4);
+    s = s.replace(/0+$/, "").replace(/\.$/, "");
+    return s + " SOL";
+  }
   function fmtMoney(n, digits) {
     var d = digits == null ? 2 : digits;
     var x = Number(n);
@@ -412,6 +419,16 @@
       else { el.classList.remove("live"); el.hidden = false; el.textContent = "PAPER"; }
     });
     renderOdometer(document.getElementById("balanceOdo"), st.balance != null ? st.balance : st.cash_usd);
+    var solLine = document.getElementById("solLine");
+    if (solLine) {
+      if (mode === "LIVE" && st.sol != null) {
+        solLine.hidden = false;
+        solLine.textContent = fmtSol(st.sol);
+      } else {
+        solLine.hidden = true;
+        solLine.textContent = "";
+      }
+    }
     var tp = document.getElementById("todayPct");
     if (tp) {
       var p = Number(st.today_pct || 0);
@@ -420,6 +437,7 @@
     }
     var mul = document.getElementById("multiplier");
     if (mul) mul.textContent = (Number(st.multiplier || 1)).toFixed(2) + "×";
+    renderLivePnl(st, mode);
     drawRange();
     renderHomeBots();
     renderHomeActivity();
@@ -435,6 +453,39 @@
     if (bh) bh.textContent = "Bots · " + nRun + " running";
   }
 
+  function renderLivePnl(st, mode) {
+    var pnlEl = document.getElementById("livePnl");
+    var list = document.getElementById("openPosList");
+    if (!pnlEl || !list) return;
+    if (mode !== "LIVE") {
+      pnlEl.hidden = true;
+      list.hidden = true;
+      list.innerHTML = "";
+      return;
+    }
+    var realized = Number(st.realized_pnl_usd || 0);
+    var openPnl = Number(st.open_pnl_usd || 0);
+    var tonight = (st.tonight_pnl_usd != null) ? Number(st.tonight_pnl_usd) : (realized + openPnl);
+    pnlEl.hidden = false;
+    pnlEl.innerHTML = "Tonight " + "<span class=\"" + (tonight < 0 ? "down" : "") + "\">" + escapeHtml(fmtMoney(tonight, 2)) + "</span>";
+    var positions = st.open_positions || [];
+    if (!positions.length) {
+      list.hidden = true;
+      list.innerHTML = "";
+      return;
+    }
+    list.hidden = false;
+    list.innerHTML = positions.map(function (p) {
+      var sym = p.symbol || (p.mint ? p.mint.slice(0, 6) : "open");
+      var pnl = p.pnl_usd;
+      var sz = p.mark_usd != null ? p.mark_usd : p.size_usd;
+      var cls = (pnl != null && pnl < 0) ? "down" : "";
+      return "<li><span class=\"sym\">" + escapeHtml(sym) + "</span><span class=\"num " + cls + "\">" +
+        escapeHtml(sz != null ? fmtMoney(sz) : "—") +
+        (pnl != null ? " · " + fmtMoney(pnl, 2) : "") +
+        "</span></li>";
+    }).join("");
+  }
   function drawRange() {
     var range = store.range || "LIVE";
     document.querySelectorAll("#rangeSwitch button").forEach(function (b) {
@@ -602,7 +653,18 @@
     html += "<div class=\"group\"><div class=\"row\"><div class=\"left\"><strong>Mode</strong><span class=\"muted\">" + escapeHtml(note) + "</span></div>" +
       "<div class=\"seg disabled\"><button type=\"button\" class=\"" + (mode === "PAPER" ? "on" : "") + "\" disabled>PAPER</button>" +
       "<button type=\"button\" class=\"" + (mode === "LIVE" ? "on" : "") + "\" disabled>LIVE</button></div></div></div>";
-    html += "<div class=\"group\"><div class=\"row\"><div class=\"left\"><strong>Cash</strong></div><span class=\"num\">" + escapeHtml(fmtMoney(acc.balance != null ? acc.balance : st.balance)) + "</span></div></div>";
+    if (mode === "LIVE" && (acc.cash_source === "lightning" || st.cash_source === "lightning" || acc.sol != null || st.sol != null)) {
+      var sol = acc.sol != null ? acc.sol : st.sol;
+      var usd = acc.balance != null ? acc.balance : st.balance;
+      html += "<div class=\"group\">";
+      html += "<div class=\"row\"><div class=\"left\"><strong>Lightning wallet</strong><span class=\"muted\">SOL + USD, not FOMO cash</span></div><span class=\"num\">" + escapeHtml(sol != null ? fmtSol(sol) : "—") + "</span></div>";
+      html += "<div class=\"row\"><div class=\"left\"><strong>USD value</strong></div><span class=\"num\">" + escapeHtml(fmtMoney(usd)) + "</span></div>";
+      var tPnl = (st.tonight_pnl_usd != null) ? st.tonight_pnl_usd : acc.tonight_pnl_usd;
+      if (tPnl != null) html += "<div class=\"row\"><div class=\"left\"><strong>Tonight P&L</strong></div><span class=\"num" + (Number(tPnl) < 0 ? " down" : "") + "\">" + escapeHtml(fmtMoney(tPnl, 2)) + "</span></div>";
+      html += "</div>";
+    } else {
+      html += "<div class=\"group\"><div class=\"row\"><div class=\"left\"><strong>Cash</strong>" + (mode === "PAPER" ? "<span class=\"muted\">PAPER</span>" : "") + "</div><span class=\"num\">" + escapeHtml(fmtMoney(acc.balance != null ? acc.balance : st.balance)) + "</span></div></div>";
+    }
     html += "<div class=\"group\">";
     html += "<div class=\"row\"><div class=\"left\"><strong>Your FOMO profile</strong></div>" +
       (profile ? "<a href=\"" + escapeHtml(profile) + "\" target=\"_blank\" rel=\"noopener\">Open</a>" : "<span class=\"muted\">—</span>") + "</div>";
